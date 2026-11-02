@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Curling.Wheelchair</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #e5e7eb; font-family: system-ui, -apple-system, sans-serif;
+    touch-action: none; -webkit-user-select: none; user-select: none;
+  }
+  .top-bar {
+    display: flex; align-items: center; justify-content: center;
+    padding: 6px 16px; background: #e5e7eb;
+    border-bottom: 1px solid #d1d5db; position: relative;
+  }
+  #header {
+    text-align: center; color: #1f2937;
+    font-size: clamp(16px, 5vw, 22px); font-weight: 800; letter-spacing: 3px;
+  }
+  #header span { color: #2563eb; }
+  #gameWrapper {
+    width: 100%; flex: 1; display: flex;
+    justify-content: center; align-items: center; overflow: hidden;
+  }
+  canvas {
+    display: block; background: #ffffff; border-radius: 4px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  }
+  #controls {
+    display: flex; justify-content: center; align-items: center;
+    padding: 8px 4px; background: #e5e7eb;
+  }
+  #controlsInner {
+    display: flex; align-items: stretch;
+    gap: 6px;
+    box-sizing: border-box;
+  }
+  .ctrlBtn {
+    border: none; border-radius: 6px; cursor: pointer;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+    padding: 8px 4px;
+    transition: 0.05s linear;
+    display: inline-flex; align-items: center; justify-content: center;
+    white-space: nowrap;
+    flex: 1 1 0;
+    min-width: 0;
+    height: 36px;
+    box-sizing: border-box;
+  }
+  .ctrlBtn:active { transform: scale(0.97); }
+  #resetBtn {
+    background: #ef4444; color: #fff; font-size: 16px;
+    box-shadow: 0 2px 4px rgba(239,68,68,0.2);
+  }
+  #resetBtn:active { background: #dc2626; }
+  #modeBtn {
+    background: #2563eb; color: #fff;
+    box-shadow: 0 2px 4px rgba(37,99,235,0.2);
+  }
+  #modeBtn:active { background: #1e40af; }
+  #eightBtn {
+    background: #dc2626; color: #fff;
+    box-shadow: 0 2px 4px rgba(220,38,38,0.2);
+  }
+  #eightBtn:active { background: #b91c1c; }
+  #shareBtn {
+    background: #2563eb; color: #fff; font-size: 16px;
+    box-shadow: 0 2px 4px rgba(37,99,235,0.2);
+  }
+  #shareBtn:active { background: #1e40af; }
+  #infoBtn {
+    background: #dc2626; color: #fff; font-size: 16px;
+    box-shadow: 0 2px 4px rgba(220,38,38,0.2);
+  }
+  #infoBtn:active { background: #b91c1c; }
+  .modal {
+    display: none;
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    align-items: center; justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(3px);
+  }
+  .modal-card {
+    background: #fffef7;
+    max-width: 90%;
+    width: 340px;
+    padding: 22px 18px;
+    border-radius: 24px;
+    box-shadow: 0 20px 35px rgba(0,0,0,0.3);
+    text-align: left;
+    border: 1px solid rgba(37,99,235,0.3);
+  }
+  .modal-card h3 {
+    font-size: 1.2rem; margin-bottom: 12px; color: #2563eb;
+    font-weight: 700; border-left: 4px solid #2563eb;
+    padding-left: 12px;
+  }
+  .modal-card p {
+    font-size: 0.95rem; line-height: 1.45; color: #2563eb;
+    margin-bottom: 10px;
+  }
+  .modal-card .author {
+    margin-top: 14px;
+    font-size: 0.85rem;
+    color: #1e40af;
+    font-weight: 600;
+    text-align: right;
+  }
+  .close-modal-btn {
+    margin-top: 16px; background: #2563eb; color: white;
+    border: none; padding: 10px 20px; border-radius: 40px;
+    font-size: 0.95rem; font-weight: 600; cursor: pointer;
+    width: 100%;
+  }
+  .close-modal-btn:active { background: #1e40af; }
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <div id="header">CURLING<span>.</span>WHEELCHAIR</div>
+</div>
+<div id="gameWrapper"><canvas id="gameCanvas"></canvas></div>
+<div id="controls">
+  <div id="controlsInner">
+    <button id="resetBtn" class="ctrlBtn" aria-label="Сброс">⟲</button>
+    <button id="modeBtn" class="ctrlBtn">ИП 1</button>
+    <button id="eightBtn" class="ctrlBtn">8</button>
+    <button id="shareBtn" class="ctrlBtn" aria-label="Поделиться">📤</button>
+    <button id="infoBtn" class="ctrlBtn" aria-label="Описание">ⓘ</button>
+  </div>
+</div>
+
+<div id="infoModal" class="modal">
+  <div class="modal-card">
+    <h3>Описание</h3>
+    <p>1. В исходном положении камень находится на центральной линии.</p>
+    <p>2. Когда целимся на щётку, камень не смещается — смещается только коляска.</p>
+    <p>3. Экстендер параллелен коляске и смотрит ровно на щётку.</p>
+    <p>4. Во время раскачки линия сохраняется и идёт только вперёд-назад на щётку.</p>
+    <div class="author">Разработчик: Киба Данил Степанович</div>
+    <button class="close-modal-btn" id="closeModalBtn">Понятно</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let W, H, dpr;
+let pxPerM;
+let FIELD_LEFT, FIELD_TOP, FIELD_RIGHT, FIELD_BOTTOM, FIELD_CENTER_X;
+let STONE_BASE_X, STONE_BASE_Y;
+let stoneRadius;
+let MAX_ANGLE;
+let sliderX = 0;
+let sliderY = 0;
+let draggingSlider = false;
+let draggingSliderY = false;
+let currentAngle = 0;
+let mode = 0;
+let extensionOffset = 0;
+
+let eightTargetSide = -1;
+
+const WHEELCHAIR_WIDTH = 0.65;
+const WHEELCHAIR_LENGTH = 1.00;
+const WHEEL_WIDTH = 0.05;
+const WHEEL_LENGTH = 0.75;
+const EXTENDER_OFFSET = 0.10;
+const EXTENDER_OFFSET_INNER = 0.05;
+const EXTENDER_LENGTH = 2.40;
+const STONE_DIAMETER = 0.284;
+const STONE_FROM_HOG = 1.00;
+const WHEELCHAIR_LINE_OFFSET = 0.457;
+const EXTEND_FORWARD = 0.80;
+const EXTEND_BACKWARD = 0.40;
+const BOTTOM_GAP = 1.00;
+const EIGHT_TARGET_FORWARD = 28.5 - STONE_FROM_HOG;
+const EIGHT_TARGET_SIDE = 1.21;
+
+const MAX_LATERAL_AT_TEE = 2.50;
+const DIST_TO_TEE = 28.5;
+
+const ZONE_WIDTH = 5.00;
+const TOP_EXTRA = 1.2;
+
+const MODES = [
+  { side: 1, inner: false, label: 'ИП 1' },
+  { side: -1, inner: false, label: 'ИП 2' },
+  { side: 1, inner: true, label: 'ИП 3' },
+  { side: -1, inner: true, label: 'ИП 4' }
+];
+
+function getVerticalSliderCenter() {
+  const sliderH = H * 0.5;
+  const sliderTop = (H - sliderH) / 2;
+  return sliderTop + sliderH / 2;
+}
+
+function layoutControls() {
+  const inner = document.getElementById('controlsInner');
+  inner.style.width = Math.floor(W) + 'px';
+}
+
+function resize() {
+  dpr = window.devicePixelRatio || 1;
+  const hdrH = 48, ctrlH = 56, pad = 4;
+  const availH = window.innerHeight - hdrH - ctrlH - pad * 2;
+  const availW = window.innerWidth - pad * 2;
+
+  H = availH;
+  W = H / (7 / ZONE_WIDTH);
+  if (W > availW) { W = availW; H = W * (7 / ZONE_WIDTH); }
+
+  canvas.style.width = Math.floor(W) + 'px';
+  canvas.style.height = Math.floor(H) + 'px';
+  canvas.width = Math.floor(W * dpr);
+  canvas.height = Math.floor(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const wcHalfL = (WHEELCHAIR_LENGTH / 2);
+  const totalM = TOP_EXTRA + STONE_FROM_HOG + EXTENDER_LENGTH + wcHalfL + BOTTOM_GAP;
+
+  const drawW = W * (1 - 2 * 0.05);
+  const drawH = H * (1 - 2 * 0.05);
+  pxPerM = Math.min(drawH / totalM, drawW / ZONE_WIDTH);
+
+  const fieldW = ZONE_WIDTH * pxPerM;
+  const fieldH = totalM * pxPerM;
+  FIELD_LEFT = (W - fieldW) / 2;
+  FIELD_TOP = (H - fieldH) / 2;
+  FIELD_RIGHT = FIELD_LEFT + fieldW;
+  FIELD_BOTTOM = FIELD_TOP + fieldH;
+  FIELD_CENTER_X = W / 2;
+
+  stoneRadius = (STONE_DIAMETER * pxPerM) / 2;
+
+  STONE_BASE_X = FIELD_CENTER_X;
+  STONE_BASE_Y = FIELD_TOP + (TOP_EXTRA + STONE_FROM_HOG) * pxPerM;
+
+  MAX_ANGLE = Math.atan2(MAX_LATERAL_AT_TEE, DIST_TO_TEE);
+
+  sliderX = FIELD_CENTER_X;
+  sliderY = getVerticalSliderCenter();
+  layoutControls();
+}
+
+function drawField() {
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(FIELD_LEFT, FIELD_TOP, FIELD_RIGHT - FIELD_LEFT, FIELD_BOTTOM - FIELD_TOP);
+
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(FIELD_LEFT, FIELD_TOP, FIELD_RIGHT - FIELD_LEFT, FIELD_BOTTOM - FIELD_TOP);
+
+  const hogY = FIELD_TOP + TOP_EXTRA * pxPerM;
+
+  ctx.strokeStyle = '#dc2626';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(FIELD_LEFT, hogY);
+  ctx.lineTo(FIELD_RIGHT, hogY);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#9ca3af';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(FIELD_CENTER_X, FIELD_TOP);
+  ctx.lineTo(FIELD_CENTER_X, FIELD_BOTTOM);
+  ctx.stroke();
+
+  const offsetPx = WHEELCHAIR_LINE_OFFSET * pxPerM;
+  ctx.strokeStyle = '#9ca3af';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(FIELD_CENTER_X - offsetPx, hogY);
+  ctx.lineTo(FIELD_CENTER_X - offsetPx, FIELD_BOTTOM);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(FIELD_CENTER_X + offsetPx, hogY);
+  ctx.lineTo(FIELD_CENTER_X + offsetPx, FIELD_BOTTOM);
+  ctx.stroke();
+}
+
+function drawStone(x, y, radius) {
+  ctx.beginPath();
+  ctx.arc(x + 1.5, y + 1.5, radius, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = '#dc2626';
+  ctx.fill();
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 0.5, 0, Math.PI * 2);
+  ctx.strokeStyle = '#7f1d1d';
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 0.25, 0, Math.PI * 2);
+  ctx.fillStyle = '#111';
+  ctx.fill();
+}
+
+function getModeParams() {
+  const m = MODES[mode];
+  if (m.inner) {
+    return { side: m.side, offset: (WHEELCHAIR_WIDTH / 2 - EXTENDER_OFFSET_INNER) };
+  }
+  return { side: m.side, offset: (WHEELCHAIR_WIDTH / 2 + EXTENDER_OFFSET) };
+}
+
+function drawWheelchair(angle) {
+  const fwdX = Math.sin(angle);
+  const fwdY = -Math.cos(angle);
+  const backDirX = -fwdX;
+  const backDirY = -fwdY;
+
+  const perpX = -backDirY;
+  const perpY = backDirX;
+
+  const modeParams = getModeParams();
+
+  const baseDistPx = (EXTENDER_LENGTH + WHEELCHAIR_LENGTH / 2) * pxPerM;
+
+  const wcCenterX = FIELD_CENTER_X + backDirX * baseDistPx
+                    + perpX * modeParams.offset * pxPerM * modeParams.side;
+  const wcCenterY = STONE_BASE_Y + backDirY * baseDistPx
+                    + perpY * modeParams.offset * pxPerM * modeParams.side;
+
+  const halfW = (WHEELCHAIR_WIDTH / 2) * pxPerM;
+  const halfL = (WHEELCHAIR_LENGTH / 2) * pxPerM;
+
+  const wheelHalfW = (WHEEL_WIDTH / 2) * pxPerM;
+  const wheelHalfL = (WHEEL_LENGTH / 2) * pxPerM;
+
+  function drawRect(cx, cy, hw, hl, fill, stroke, lw) {
+    const c = [
+      { x: cx - perpX * hw - backDirX * hl, y: cy - perpY * hw - backDirY * hl },
+      { x: cx + perpX * hw - backDirX * hl, y: cy + perpY * hw - backDirY * hl },
+      { x: cx + perpX * hw + backDirX * hl, y: cy + perpY * hw + backDirY * hl },
+      { x: cx - perpX * hw + backDirX * hl, y: cy - perpY * hw + backDirY * hl }
+    ];
+    ctx.beginPath();
+    ctx.moveTo(c[0].x, c[0].y);
+    for (let i = 1; i < 4; i++) ctx.lineTo(c[i].x, c[i].y);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+  }
+
+  const wheelOffset = halfW + wheelHalfW;
+
+  drawRect(wcCenterX - perpX * wheelOffset, wcCenterY - perpY * wheelOffset,
+           wheelHalfW, wheelHalfL, '#374151', '#111', 1.5);
+
+  drawRect(wcCenterX + perpX * wheelOffset, wcCenterY + perpY * wheelOffset,
+           wheelHalfW, wheelHalfL, '#374151', '#111', 1.5);
+
+  drawRect(wcCenterX, wcCenterY, halfW, halfL, '#2563eb', '#111', 2);
+
+  const extPx = EXTENDER_LENGTH * pxPerM;
+  const offPx = extensionOffset * pxPerM;
+
+  const attachX = FIELD_CENTER_X + backDirX * extPx;
+  const attachY = STONE_BASE_Y + backDirY * extPx;
+
+  const stoneX = attachX + fwdX * (extPx + offPx);
+  const stoneY = attachY + fwdY * (extPx + offPx);
+
+  const extBackX = stoneX - fwdX * extPx;
+  const extBackY = stoneY - fwdY * extPx;
+
+  ctx.beginPath();
+  ctx.moveTo(extBackX, extBackY);
+  ctx.lineTo(stoneX, stoneY);
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  drawStone(stoneX, stoneY, stoneRadius);
+
+  if (Math.abs(fwdY) > 0.001) {
+    const t = (FIELD_TOP - stoneY) / fwdY;
+    if (t > 0) {
+      const endX = stoneX + fwdX * t;
+      const endY = FIELD_TOP;
+
+      ctx.beginPath();
+      ctx.moveTo(stoneX, stoneY);
+      ctx.lineTo(endX, endY);
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([8, 6]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.beginPath();
+      ctx.arc(endX, endY, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#000';
+      ctx.fill();
+    }
+  }
+}
+
+function drawSlider() {
+  const sy = H - 30;
+  const sliderW = W * 0.8;
+  const sliderLeft = (W - sliderW) / 2;
+
+  ctx.beginPath();
+  ctx.moveTo(sliderLeft, sy);
+  ctx.lineTo(sliderLeft + sliderW, sy);
+  ctx.strokeStyle = 'rgba(100,100,100,0.3)';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  const centerX = sliderLeft + sliderW / 2;
+  ctx.beginPath();
+  ctx.moveTo(centerX, sy - 8);
+  ctx.lineTo(centerX, sy + 8);
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  const ratio = Math.max(-1, Math.min(1, (sliderX - centerX) / (sliderW / 2)));
+  const posX = centerX + ratio * (sliderW / 2);
+
+  ctx.beginPath();
+  ctx.arc(posX, sy, 12, 0, Math.PI * 2);
+  ctx.fillStyle = '#2563eb';
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  const sx = W - 30;
+  const sliderH = H * 0.5;
+  const sliderTop = (H - sliderH) / 2;
+
+  ctx.beginPath();
+  ctx.moveTo(sx, sliderTop);
+  ctx.lineTo(sx, sliderTop + sliderH);
+  ctx.strokeStyle = 'rgba(100,100,100,0.3)';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  const centerY = getVerticalSliderCenter();
+  ctx.beginPath();
+  ctx.moveTo(sx - 8, centerY);
+  ctx.lineTo(sx + 8, centerY);
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  const ratioY = Math.max(-1, Math.min(1, (sliderY - centerY) / (sliderH / 2)));
+  const posY = centerY + ratioY * (sliderH / 2);
+
+  ctx.beginPath();
+  ctx.arc(sx, posY, 12, 0, Math.PI * 2);
+  ctx.fillStyle = '#2563eb';
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function updateAngleFromSlider() {
+  const centerX = FIELD_CENTER_X;
+  const maxOff = W * 0.4;
+  const ratio = Math.max(-1, Math.min(1, (sliderX - centerX) / maxOff));
+  currentAngle = ratio * MAX_ANGLE;
+}
+
+function updateExtensionFromSlider() {
+  const sliderH = H * 0.5;
+  const centerY = getVerticalSliderCenter();
+  const ratio = Math.max(-1, Math.min(1, (sliderY - centerY) / (sliderH / 2)));
+  if (ratio < 0) {
+    extensionOffset = -ratio * EXTEND_FORWARD;
+  } else {
+    extensionOffset = -ratio * EXTEND_BACKWARD;
+  }
+}
+
+function applyEightTarget(side) {
+  extensionOffset = 0;
+  sliderY = getVerticalSliderCenter();
+
+  const targetDx = side * EIGHT_TARGET_SIDE * pxPerM;
+  const targetDy = -EIGHT_TARGET_FORWARD * pxPerM;
+
+  let targetAngle = Math.atan2(targetDx, -targetDy);
+
+  if (targetAngle > MAX_ANGLE) targetAngle = MAX_ANGLE;
+  if (targetAngle < -MAX_ANGLE) targetAngle = -MAX_ANGLE;
+
+  currentAngle = targetAngle;
+
+  const centerX = FIELD_CENTER_X;
+  const maxOff = W * 0.4;
+  const ratio = targetAngle / MAX_ANGLE;
+  sliderX = Math.max(W * 0.1, Math.min(W * 0.9, centerX + ratio * maxOff));
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  drawField();
+  drawWheelchair(currentAngle);
+  drawSlider();
+  requestAnimationFrame(draw);
+}
+
+function getPos(e) {
+  const r = canvas.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  return { x: (t.clientX - r.left) * (W / r.width), y: (t.clientY - r.top) * (H / r.height) };
+}
+
+function handleStart(e) {
+  e.preventDefault();
+  const p = getPos(e);
+  const sy = H - 30;
+  if (Math.abs(p.y - sy) < 30) {
+    draggingSlider = true;
+    sliderX = Math.max(W * 0.1, Math.min(W * 0.9, p.x));
+    updateAngleFromSlider();
+    return;
+  }
+  const sx = W - 30;
+  const sliderH = H * 0.5;
+  const sliderTop = (H - sliderH) / 2;
+  if (Math.abs(p.x - sx) < 30 && p.y >= sliderTop - 20 && p.y <= sliderTop + sliderH + 20) {
+    draggingSliderY = true;
+    sliderY = Math.max(sliderTop, Math.min(sliderTop + sliderH, p.y));
+    updateExtensionFromSlider();
+  }
+}
+
+function handleMove(e) {
+  e.preventDefault();
+  const p = getPos(e);
+  if (draggingSlider) {
+    sliderX = Math.max(W * 0.1, Math.min(W * 0.9, p.x));
+    updateAngleFromSlider();
+  }
+  if (draggingSliderY) {
+    const sliderH = H * 0.5;
+    const sliderTop = (H - sliderH) / 2;
+    sliderY = Math.max(sliderTop, Math.min(sliderTop + sliderH, p.y));
+    updateExtensionFromSlider();
+  }
+}
+
+function handleEnd() { draggingSlider = false; draggingSliderY = false; }
+
+canvas.addEventListener('mousedown', handleStart);
+canvas.addEventListener('mousemove', handleMove);
+canvas.addEventListener('mouseup', handleEnd);
+canvas.addEventListener('touchstart', handleStart, { passive: false });
+canvas.addEventListener('touchmove', handleMove, { passive: false });
+canvas.addEventListener('touchend', handleEnd);
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  sliderX = FIELD_CENTER_X;
+  sliderY = getVerticalSliderCenter();
+  currentAngle = 0;
+  extensionOffset = 0;
+});
+
+document.getElementById('modeBtn').addEventListener('click', () => {
+  mode = (mode + 1) % 4;
+  document.getElementById('modeBtn').textContent = MODES[mode].label;
+  sliderX = FIELD_CENTER_X;
+  sliderY = getVerticalSliderCenter();
+  currentAngle = 0;
+  extensionOffset = 0;
+});
+
+document.getElementById('eightBtn').addEventListener('click', () => {
+  applyEightTarget(eightTargetSide);
+  eightTargetSide = -eightTargetSide;
+});
+
+function shareApp() {
+  const shareData = {
+    title: 'Curling.Wheelchair',
+    text: 'Тренажёр углов и траекторий для кёрлинга на колясках',
+    url: window.location.href
+  };
+  if (navigator.share) {
+    navigator.share(shareData).catch((err) => {
+      if (err.name !== 'AbortError') fallbackShare();
+    });
+  } else {
+    fallbackShare();
+  }
+}
+
+function fallbackShare() {
+  const text = 'Тренажёр Curling.Wheelchair: ' + window.location.href;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text)
+      .then(() => alert('Ссылка скопирована в буфер обмена'))
+      .catch(() => prompt('Скопируйте ссылку:', text));
+  } else {
+    prompt('Скопируйте ссылку:', text);
+  }
+}
+
+document.getElementById('shareBtn').addEventListener('click', shareApp);
+
+const infoModal = document.getElementById('infoModal');
+document.getElementById('infoBtn').addEventListener('click', () => {
+  infoModal.style.display = 'flex';
+});
+document.getElementById('closeModalBtn').addEventListener('click', () => {
+  infoModal.style.display = 'none';
+});
+infoModal.addEventListener('click', (e) => {
+  if (e.target === infoModal) infoModal.style.display = 'none';
+});
+
+window.addEventListener('resize', () => {
+  resize();
+  sliderX = FIELD_CENTER_X;
+  sliderY = getVerticalSliderCenter();
+  currentAngle = 0;
+  extensionOffset = 0;
+});
+
+resize();
+updateAngleFromSlider();
+updateExtensionFromSlider();
+draw();
+</script>
+</body>
+</html>
